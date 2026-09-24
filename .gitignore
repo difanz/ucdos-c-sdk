@@ -1,0 +1,16 @@
+*.OBJ
+*.obj
+*.BAK
+*.bak
+*.LOG
+*.log
+DO_BUILD.BAT
+DO_BUILD.LOG
+B[0-9]*.BAT
+B[0-9]*.LOG
+__pycache__/
+*.LIB
+*.lib
+!/LIB/SDK.LIB
+!/SDK.LIB
+

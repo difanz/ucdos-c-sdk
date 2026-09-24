@@ -1,0 +1,36 @@
+UCDOS 5.0/6.0 SDK for C/C++ 2.0
+源码工程编译与使用指南
+===================================================================
+
+一、目录结构说明
+    APP/        官方应用程序实例 (简易编辑器/围棋/生命游戏/动画演示等)
+    BMP/        官方配套位图素材
+    CPP/        官方 C++ 面向对象扩展与例程
+    EXAMPLES/   官方教学例程 (HELLO, WIN, WID 等)
+    ICO/        官方图标库及浏览器
+    INCLUDE/    SDK 接口头文件
+    LIB/        核心开发库 (SDK.LIB, SDKNOR.LIB)
+    SOURCE/     SDK.LIB 核心库源代码工程与 Makefile
+    tools/      自动化构建工具 (build.py)
+    BUILD.BAT   根目录一键构建脚本
+    CLEAN.BAT   临时文件清理脚本
+    MAKEFILE    根目录 Makefile
+    SDK.DRV     图形模式显卡驱动文件
+    SDK.H       主接口头文件
+    README      官方说明书 (在 DOS 下使用 README.COM 阅读)
+
+二、构建方法
+    1. DOS 原生构建
+       在 DOS 或 DOSBox 下直接运行 BUILD.BAT，自动调用 Borland MAKE
+       完成核心库编译并生成 LIB\SDK.LIB 与根目录 SDK.LIB。
+       清理中间文件运行 CLEAN.BAT。
+
+    2. 示例编译
+       进入 EXAMPLES 目录运行：
+           BUILD.BAT HELLO.C
+           BUILD.BAT WIN\WIN1.C
+           BUILD.BAT WID\BUTTON.C
+       即可完成各例程的编译与链接。
+
+    3. Linux 驱动构建
+       运行 python3 tools/build.py --all 驱动 DOSBox-X 完成全量编译。

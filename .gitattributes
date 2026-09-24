@@ -1,0 +1,10 @@
+# Authentic DOS SDK line ending & binary configuration
+* text eol=crlf
+*.OBJ binary
+*.LIB binary
+*.DRV binary
+*.EXE binary
+*.BMP binary
+*.ICO binary
+*.DDB binary
+*.PAL binary

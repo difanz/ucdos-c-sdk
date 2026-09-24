@@ -1,0 +1,9 @@
+all:
+	cd SOURCE
+	$(MAKE) -f MAKEFILE
+	cd ..
+
+clean:
+	cd SOURCE
+	$(MAKE) -f MAKEFILE clean
+	cd ..
