@@ -20,20 +20,23 @@ glyph_bytes         dw 0
 max_width           dw 0
 
 ; 文本参数块
-text_x              dw 0
-text_y              dw 0
-text_str            dd 0
-font_id             dw 0
-font_dir            dw 0
-char_width          dw 0
-char_height         dw 0
-fg_color            dw 0
-bk_color            dw 0
-char_extra          dw 0
-text_flags          dw 0
-buf_ptr             dd 0
-buf_size            dw 0
-write_mode          db 0
+; Packed TEXTINFO: 31 bytes, matching SDK.H in the large model.
+TEXTINFO31_SIZE equ 1Fh
+TEXTINFO31 label byte
+TEXTINFO31_X              dw 0
+TEXTINFO31_Y              dw 0
+TEXTINFO31_STRING            dd 0
+TEXTINFO31_ASC_FONT_NO             dw 0
+TEXTINFO31_CHI_FONT_NO            dw 0
+TEXTINFO31_FONT_WIDTH          dw 0
+TEXTINFO31_FONT_HEIGHT         dw 0
+TEXTINFO31_FR_COLOR            dw 0
+TEXTINFO31_BG_COLOR            dw 0
+TEXTINFO31_CHAR_SPACE          dw 0
+TEXTINFO31_EQUAL_WIDTH          dw 0
+TEXTINFO31_BUFFER             dd 0
+TEXTINFO31_BUFFER_LENGTH            dw 0
+TEXTINFO31_ICON          db 0
 
 ; 字符状态
 cur_char            dw 0
@@ -49,7 +52,7 @@ saved_3f            dw 0FFFFh
 ; 点阵光栅化
 draw_glyph_scanlines proc near
     mov     si, [glyph_buf_off]
-    les     di, [buf_ptr]
+    les     di, [TEXTINFO31_BUFFER]
     mov     ax, [cur_x_bit]
     push    ax
     shr     ax, 1
@@ -62,7 +65,7 @@ draw_glyph_scanlines proc near
     neg     bl
     xor     bh, bh
     mov     ax, [cur_char_width]
-    mov     cx, [char_extra]
+    mov     cx, [TEXTINFO31_CHAR_SPACE]
     cmp     byte ptr [cur_char+1], 0
     jz      @@no_double_extra
     shl     cx, 1
@@ -78,7 +81,7 @@ draw_glyph_scanlines proc near
     mov     cx, [band_y_end]
     sub     cx, [band_y_start]
     inc     cx
-    mov     ds, [word ptr buf_ptr+2]
+    mov     ds, [word ptr TEXTINFO31_BUFFER+2]
 
 @@line_loop:
     push    cx
@@ -134,18 +137,18 @@ draw_glyph_scanlines endp
 
 ; 取字符点阵
 load_char_glyph proc near
-    mov     bx, [char_width]
+    mov     bx, [TEXTINFO31_FONT_WIDTH]
     or      ah, ah
     jz      @@single_byte
     shl     bx, 1
 @@single_byte:
     mov     [cur_char_width], bx
     mov     [cur_char], ax
-    mov     es, [word ptr buf_ptr+2]
+    mov     es, [word ptr TEXTINFO31_BUFFER+2]
     mov     di, [glyph_buf_off]
-    cmp     [char_height], 16
+    cmp     [TEXTINFO31_FONT_HEIGHT], 16
     jnz     @@use_int7e
-    cmp     [char_width], 8
+    cmp     [TEXTINFO31_FONT_WIDTH], 8
     jnz     @@use_int7e
     cmp     [cur_dir], 0
     jnz     @@use_int7e
@@ -181,27 +184,27 @@ blit_color          db 0
 
 ; 输出到显存
 blit_to_screen proc near
-    les     ax, [buf_ptr]
+    les     ax, [TEXTINFO31_BUFFER]
     mov     [word ptr blit_buf_ptr+2], es
     mov     [word ptr blit_buf_ptr], ax
-    mov     ax, [text_x]
+    mov     ax, [TEXTINFO31_X]
     mov     [blit_x], ax
     mov     ax, [text_width]
     mov     [blit_width], ax
-    mov     ax, [text_y]
+    mov     ax, [TEXTINFO31_Y]
     add     ax, [band_y_start]
     mov     [blit_y], ax
     mov     ax, [band_y_end]
     sub     ax, [band_y_start]
     inc     ax
     mov     [blit_height], ax
-    mov     ax, [fg_color]
+    mov     ax, [TEXTINFO31_FR_COLOR]
     mov     [blit_color], al
-    mov     ax, [bk_color]
+    mov     ax, [TEXTINFO31_BG_COLOR]
     mov     [blit_bk_color], al
     mov     ax, 9509h
     mov     bh, 5
-    mov     bl, [write_mode]
+    mov     bl, [TEXTINFO31_ICON]
     mov     si, offset blit_buf_ptr
     int     10h
     ret
@@ -211,7 +214,7 @@ blit_to_screen endp
 ; 取下一个字符
 get_next_char proc near
     xor     ah, ah
-    mov     bx, [cs:font_id]
+    mov     bx, [cs:TEXTINFO31_ASC_FONT_NO]
     lodsb
     dec     cx
     jz      @@done
@@ -222,7 +225,7 @@ get_next_char proc near
     mov     ah, al
     lodsb
     dec     cx
-    mov     bx, [cs:font_dir]
+    mov     bx, [cs:TEXTINFO31_CHI_FONT_NO]
 @@done:
     mov     [cs:cur_dir], bx
     ret
@@ -231,7 +234,7 @@ get_next_char endp
 
 ; 计算文本尺寸
 calc_text_extent proc near
-    lds     si, [text_str]
+    lds     si, [TEXTINFO31_STRING]
     mov     bx, 0FFFFh
 @@count_len:
     lodsb
@@ -241,12 +244,12 @@ calc_text_extent proc near
     push    cs
     pop     ds
     mov     [str_len], bx
-    cmp     [font_id], 0
+    cmp     [TEXTINFO31_ASC_FONT_NO], 0
     jz      @@fixed_width
-    cmp     [text_flags], 1
+    cmp     [TEXTINFO31_EQUAL_WIDTH], 1
     jz      @@fixed_width
     mov     [text_width], 0
-    lds     si, [text_str]
+    lds     si, [TEXTINFO31_STRING]
     mov     cx, bx
 
 @@char_loop:
@@ -255,18 +258,18 @@ calc_text_extent proc near
     push    ds
     push    cs
     pop     ds
-    mov     bx, [char_width]
+    mov     bx, [TEXTINFO31_FONT_WIDTH]
     shl     bx, 1
-    add     bx, [char_extra]
+    add     bx, [TEXTINFO31_CHAR_SPACE]
     or      ah, ah
     jnz     @@add_extra
     mov     [cur_char], ax
-    mov     ax, [char_width]
+    mov     ax, [TEXTINFO31_FONT_WIDTH]
     mov     [cur_char_width], ax
     push    [saved_3f]
     mov     [saved_3f], 0
     mov     si, offset cur_char
-    les     di, [buf_ptr]
+    les     di, [TEXTINFO31_BUFFER]
     int     7Eh
     pop     [saved_3f]
     mov     bx, [cur_char_width]
@@ -274,7 +277,7 @@ calc_text_extent proc near
     jna     @@add_extra
     mov     [max_width], bx
 @@add_extra:
-    add     bx, [char_extra]
+    add     bx, [TEXTINFO31_CHAR_SPACE]
     add     [text_width], bx
     pop     ds
     pop     si
@@ -284,7 +287,7 @@ calc_text_extent proc near
     push    cs
     pop     ds
 @@check_max_extent:
-    mov     ax, [char_width]
+    mov     ax, [TEXTINFO31_FONT_WIDTH]
     shl     ax, 1
     cmp     ax, [max_width]
     jna     @@done_extent
@@ -293,8 +296,8 @@ calc_text_extent proc near
     ret
 
 @@fixed_width:
-    mov     ax, [char_width]
-    add     ax, [char_extra]
+    mov     ax, [TEXTINFO31_FONT_WIDTH]
+    add     ax, [TEXTINFO31_CHAR_SPACE]
     mul     bx
     mov     [text_width], ax
     jmp     short @@check_max_extent
@@ -311,14 +314,14 @@ _EngTextOut proc far
     push    ds
     push    es
     lds     si, [bp+6]
-    mov     di, offset text_x
+    mov     di, offset TEXTINFO31
     push    cs
     pop     es
-    mov     cx, 1Fh
+    mov     cx, TEXTINFO31_SIZE
     rep     movsb
     push    cs
     pop     ds
-    cmp     [buf_size], 1000h
+    cmp     [TEXTINFO31_BUFFER_LENGTH], 1000h
     ja      @@buf_size_ok
 
 @@fail_exit:
@@ -326,15 +329,15 @@ _EngTextOut proc far
     jmp     @@ret_exit
 
 @@buf_size_ok:
-    mov     ax, [char_width]
+    mov     ax, [TEXTINFO31_FONT_WIDTH]
     mov     [max_width], ax
-    mov     ax, [char_height]
+    mov     ax, [TEXTINFO31_FONT_HEIGHT]
     mov     [tot_height], ax
     dec     ax
     mov     [band_y_end], ax
     mov     [band_y_start], 0
     mov     al, 1
-    cmp     [text_flags], 1
+    cmp     [TEXTINFO31_EQUAL_WIDTH], 1
     jnz     @@no_flag40
     or      al, 40h
 @@no_flag40:
@@ -356,7 +359,7 @@ _EngTextOut proc far
     shr     ax, 1
     shl     ax, 1
     add     bx, ax
-    mov     ax, [buf_size]
+    mov     ax, [TEXTINFO31_BUFFER_LENGTH]
     sub     ax, 1000h
     xor     dx, dx
     div     bx
@@ -365,11 +368,11 @@ _EngTextOut proc far
     jz      @@fail_exit
     mul     [bytes_per_line]
     push    ax
-    sub     ax, [buf_size]
+    sub     ax, [TEXTINFO31_BUFFER_LENGTH]
     neg     ax
     mov     [saved_3f], ax
     pop     ax
-    add     ax, [word ptr buf_ptr]
+    add     ax, [word ptr TEXTINFO31_BUFFER]
     mov     [glyph_buf_off], ax
 
 @@band_loop:
@@ -383,7 +386,7 @@ _EngTextOut proc far
     dec     ax
     mov     [band_y_end], ax
     mov     cx, [str_len]
-    lds     si, [text_str]
+    lds     si, [TEXTINFO31_STRING]
 
 @@band_char_loop:
     call    get_next_char
@@ -430,20 +433,20 @@ _EngTextExtent proc far
     push    ds
     push    es
     lds     si, [bp+6]
-    mov     di, offset text_x
+    mov     di, offset TEXTINFO31
     push    cs
     pop     es
-    mov     cx, 1Fh
+    mov     cx, TEXTINFO31_SIZE
     rep     movsb
     push    cs
     pop     ds
-    mov     ax, [char_height]
+    mov     ax, [TEXTINFO31_FONT_HEIGHT]
     mov     [tot_height], ax
     dec     ax
     mov     [band_y_end], ax
     mov     [band_y_start], 0
     mov     al, 1
-    cmp     [text_flags], 1
+    cmp     [TEXTINFO31_EQUAL_WIDTH], 1
     jnz     @@no_flag40
     or      al, 40h
 @@no_flag40:

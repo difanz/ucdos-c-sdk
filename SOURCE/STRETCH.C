@@ -82,11 +82,11 @@ int UC_ZoomIcon(char *ddbbuf, WORD width, WORD depth,
     if (fp == NULL)
         return -2;
 
-    *(WORD far *)buf = 0x4244;
-    *(char far *)(buf + 2) = bpp;
-    *(WORD far *)(buf + 3) = DstWidth;
-    *(WORD far *)(buf + 5) = DstHeight;
-    *(WORD far *)(buf + 7) = dst_rowbytes * planes;
+    *(WORD far *)((DDBHEAD far *)buf)->id = 0x4244;
+    ((DDBHEAD far *)buf)->acmode = bpp;
+    ((DDBHEAD far *)buf)->width = DstWidth;
+    ((DDBHEAD far *)buf)->depth = DstHeight;
+    ((DDBHEAD far *)buf)->bytes = dst_rowbytes * planes;
     fwrite(buf, 9, 1, fp);
 
     sbuf = buf;
@@ -127,13 +127,7 @@ int UC_ZoomDDB(char *SrcFile, char *DstFile, WORD DstWidth,
     int planes = 1;
     int dst_rowbytes;
     int src_rowbytes;
-    struct {
-        WORD id;
-        char depth;
-        WORD width;
-        WORD height;
-        WORD rowbytes;
-    } hdr;
+    DDBHEAD hdr;
     FILE *dfp;
     FILE *sfp;
     int i;
@@ -158,12 +152,12 @@ int UC_ZoomDDB(char *SrcFile, char *DstFile, WORD DstWidth,
     if (sfp == NULL)
         return -1;
 
-    if (fread(&hdr, 9, 1, sfp) != 1 || hdr.id != 0x4244) {
+    if (fread(&hdr, 9, 1, sfp) != 1 || *(WORD far *)hdr.id != 0x4244) {
         fclose(sfp);
         return -3;
     }
 
-    switch (hdr.depth) {
+    switch ((char)hdr.acmode) {
     case 1:
         planes = 4;
         src_rowbytes = (hdr.width + 7) >> 3;
@@ -206,11 +200,11 @@ int UC_ZoomDDB(char *SrcFile, char *DstFile, WORD DstWidth,
         return -2;
     }
 
-    *(WORD far *)Buf = 0x4244;
-    *(char far *)(Buf + 2) = hdr.depth;
-    *(WORD far *)(Buf + 3) = DstWidth;
-    *(WORD far *)(Buf + 5) = DstHeight;
-    *(WORD far *)(Buf + 7) = dst_rowbytes * planes;
+    *(WORD far *)((DDBHEAD far *)Buf)->id = 0x4244;
+    ((DDBHEAD far *)Buf)->acmode = (char)hdr.acmode;
+    ((DDBHEAD far *)Buf)->width = DstWidth;
+    ((DDBHEAD far *)Buf)->depth = DstHeight;
+    ((DDBHEAD far *)Buf)->bytes = dst_rowbytes * planes;
     fwrite(Buf, 9, 1, dfp);
 
     sbuf = Buf;
@@ -218,18 +212,18 @@ int UC_ZoomDDB(char *SrcFile, char *DstFile, WORD DstWidth,
 
     dy = 0;
     sy = 0;
-    while (sy < hdr.height) {
-        while (dy < hdr.height) {
+    while (sy < hdr.depth) {
+        while (dy < hdr.depth) {
             fread(sbuf, src_rowbytes * planes, 1, sfp);
             dy += DstHeight;
             sy++;
         }
-        while (dy >= hdr.height) {
+        while (dy >= hdr.depth) {
             for (p = 0; p < planes; p++) {
-                StretchLine(sbuf + p * src_rowbytes, dbuf, hdr.width, DstWidth, hdr.depth);
+                StretchLine(sbuf + p * src_rowbytes, dbuf, hdr.width, DstWidth, (char)hdr.acmode);
                 fwrite(dbuf, 1, dst_rowbytes, dfp);
             }
-            dy -= hdr.height;
+            dy -= hdr.depth;
         }
     }
 

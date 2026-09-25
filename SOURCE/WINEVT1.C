@@ -642,7 +642,7 @@ int far UC_CheckListBox(WINDOWS far *wnd)
     int index = 1;
 
     while (box != NULL) {
-        if ((!BOXPOP || (INPOPINP != 0 && ((INPUTLINE far *)INPOPINP)->box == box)) && box->hide) {
+        if ((!BOXPOP || (INPOPINP != 0 && (INPOPINP)->box == box)) && box->hide) {
             int x1 = wnd->left + wnd->vx + box->left;
             int y1 = wnd->top + wnd->vy + box->top;
             int x2 = x1 + ((box->width * wnd->syschar_size) >> 1) - 1;
@@ -684,7 +684,7 @@ SCROLLBAR far * far UC_CheckScrollbar(WINDOWS far *wnd)
     int x, y;
 
     while (sbar != NULL) {
-        if ((!BOXPOP || (INPOPINP != 0 && ((INPUTLINE far *)INPOPINP)->box != NULL && ((INPUTLINE far *)INPOPINP)->box->sbar == sbar)) &&
+        if ((!BOXPOP || (INPOPINP != 0 && (INPOPINP)->box != NULL && (INPOPINP)->box->sbar == sbar)) &&
             sbar->hide && sbar->max > 1.0) {
 
             UC_GetScrollbarXY(wnd, sbar, &left, &top, &leng);
@@ -844,7 +844,7 @@ void far UC_CheckPopBox(WINDOWS far *wnd, INPUTLINE far *inp)
     int size;
 
     BOXPOP = 1 - (BOXPOP != 0);
-    INPOPINP = (long)inp;
+    INPOPINP = inp;
 
     x1 = inp->left;
     y1 = inp->top;
@@ -949,7 +949,7 @@ INPUTLINE far * far UC_CheckInputLine(WINDOWS far *wnd)
     int my = MOUSE_AGI.y;
 
     while (inp != NULL) {
-        if (!BOXPOP || INPOPINP == (long)inp) {
+        if (!BOXPOP || INPOPINP == inp) {
             int x1 = wnd->left + wnd->vx + inp->left;
             int y1 = wnd->top + wnd->vy + inp->top;
             int x2 = x1 + ((inp->width * wnd->syschar_size) >> 1) + 4;
@@ -1099,12 +1099,12 @@ __update_sbar:
                     box->fun_sele();
             } else {
                 TMPSELE = 1;
-                UC_CheckPopBox(wnd, (INPUTLINE far *)INPOPINP);
+                UC_CheckPopBox(wnd, INPOPINP);
             }
         }
         if (ch == 27) {
             if (BOXPOP) {
-                UC_CheckPopBox(wnd, (INPUTLINE far *)INPOPINP);
+                UC_CheckPopBox(wnd, INPOPINP);
             }
         }
     }

@@ -7,6 +7,26 @@
 
 #pragma pack(1)
 
+/* Distinct on-disk records; unknown fields retain their byte extent. */
+typedef struct {
+    WORD SIGNATURE;
+    long CHECKSUM;
+    BYTE UNKNOWN_06[8];
+} HELP_FILE_HEADER;
+
+typedef struct {
+    WORD TITLE_LENGTH;
+    BYTE UNKNOWN_02[4];
+    long TEXT_LENGTH;
+    long TEXT_OFFSET;
+} HELP_POPUP_HEADER;
+
+typedef struct {
+    WORD TYPE;
+    WORD TEXT_POSITION;
+    DWORD TARGET_OFFSET;
+} HELP_LINK_RECORD;
+
 struct HelpInfo {
     WORD index_count;
     DWORD file_size;

@@ -767,7 +767,7 @@ void HelpOpenFile(void)
 {
     int i, j;
     FILE *fp;
-    char head[14];
+    HELP_FILE_HEADER head;
     struct HelpContent content;
     long sum;
     char ch;
@@ -792,8 +792,8 @@ void HelpOpenFile(void)
     memmove(gpcHelpName + 27, gacFileName + strlen(gacFileName) - i + 1, 12);
     UC_DisplayTitle(gpwndHelp);
 
-    fread(head, 14, 1, fp);
-    if (*(WORD *)head != 0x4855) {
+    fread(&head, 14, 1, fp);
+    if (head.SIGNATURE != 0x4855) {
         UC_DialogWarning(NULL, "文件打开错", "  不是 UCDOS SDK for C/C++ 的帮助文件!");
         fclose(fp);
         return;
@@ -805,7 +805,7 @@ void HelpOpenFile(void)
         sum += (unsigned char)ch;
     }
 
-    if (*(long *)&head[2] != sum) {
+    if (head.CHECKSUM != sum) {
         UC_DialogWarning(NULL, "文件打开错", "  帮助文件校验错!\n  请重新生成!");
         fclose(fp);
         return;
@@ -816,7 +816,7 @@ void HelpOpenFile(void)
     }
     gpHelpFile = fp;
     fseek(gpHelpFile, 0L, SEEK_SET);
-    fread(head, 14, 1, gpHelpFile);
+    fread(&head, 14, 1, gpHelpFile);
     fread(&gsttInfo, sizeof(struct HelpInfo), 1, gpHelpFile);
 
     gpsttHelpRect = (struct HelpRect *)malloc(gsttInfo.keyword_count * sizeof(struct HelpRect));
@@ -941,7 +941,7 @@ void HelpReadPage(long file_pos)
     int lines, chars;
     WORD counts[2];
     struct HelpContent tmp_content;
-    char tmp_buf[14];
+    HELP_POPUP_HEADER tmp_buf;
 
     ch = ' ';
     giPageFirstLine = 1;
@@ -974,7 +974,7 @@ void HelpReadPage(long file_pos)
 
     for (i = 0; i < gnRectNumber; i++) {
         gpsttHelpRect[i].id = i + 1;
-        fread(&gpsttHelpRect[i].type, 8, 1, gpHelpFile);
+        fread(&gpsttHelpRect[i].type, sizeof(HELP_LINK_RECORD), 1, gpHelpFile);
     }
 
     for (i = 0; i < gnRectNumber; i++) {
@@ -983,8 +983,8 @@ void HelpReadPage(long file_pos)
             fread(&tmp_content, sizeof(struct HelpContent), 1, gpHelpFile);
             gpsttHelpRect[i].len = tmp_content.title_len;
         } else {
-            fread(tmp_buf, 14, 1, gpHelpFile);
-            gpsttHelpRect[i].len = *(WORD *)tmp_buf;
+            fread(&tmp_buf, 14, 1, gpHelpFile);
+            gpsttHelpRect[i].len = tmp_buf.TITLE_LENGTH;
         }
     }
 
@@ -1248,7 +1248,7 @@ void HelpShowWin(long target_offset, int x, int y)
     void *img_buf;
     long text_offset;
     long text_len;
-    char head[14];
+    HELP_POPUP_HEADER head;
     int i;
     int max_len;
     int img_sz;
@@ -1256,9 +1256,9 @@ void HelpShowWin(long target_offset, int x, int y)
     RECT draw_rc;
 
     fseek(gpHelpFile, target_offset, SEEK_SET);
-    fread(head, 14, 1, gpHelpFile);
-    text_len = *(long *)&head[6];
-    text_offset = *(long *)&head[10];
+    fread(&head, 14, 1, gpHelpFile);
+    text_len = head.TEXT_LENGTH;
+    text_offset = head.TEXT_OFFSET;
 
     text = (char *)malloc(text_len + 1);
     if (text == NULL) {

@@ -183,10 +183,10 @@ CHECK_LEFT_CLICK:
     di = MOUSE_AGI.y;
 
     if (BOXPOP) {
-        if (UC_CheckInputBoxPop(wnd, (INPUTLINE *)INPOPINP))
+        if (UC_CheckInputBoxPop(wnd, INPOPINP))
             goto CHECK_INPUTLINE_POP;
 CLOSE_POPBOX:
-        UC_CheckPopBox(wnd, (INPUTLINE far *)INPOPINP);
+        UC_CheckPopBox(wnd, INPOPINP);
         UC_WaitFreeMouse(NULL, 0, 0, 0, 0, NULL);
         return;
     }

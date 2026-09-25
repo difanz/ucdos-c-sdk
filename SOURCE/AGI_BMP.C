@@ -89,24 +89,16 @@ set_pal:
 void UC_DIB2DDB(char *sbuf, char *dbuf, char *spal, char *dpal,
                 int color, char model, int width, int depth, int bits)
 {
-    struct {
-        char far *sbuf;
-        char far *dbuf;
-        int width;
-        int color;
-        char far *spal;
-        char far *dpal;
-        char model;
-    } dib;
+    DIB_DRIVER_PACKET dib;
     char far *p;
 
-    dib.sbuf = sbuf;
-    dib.dbuf = dbuf;
-    dib.spal = spal;
-    dib.dpal = dpal;
-    dib.width = width;
-    dib.model = model;
-    dib.color = color;
+    dib.SOURCE_PTR = sbuf;
+    dib.DEST_PTR = dbuf;
+    dib.SOURCE_PALETTE_PTR = spal;
+    dib.DEST_PALETTE_PTR = dpal;
+    dib.WIDTH = width;
+    dib.MODEL = model;
+    dib.COLOR = color;
     p = (char far *)&dib;
 
     asm {

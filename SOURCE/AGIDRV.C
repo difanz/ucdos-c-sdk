@@ -37,23 +37,14 @@ void (far *UCSDK_EXIT)();
 char PUBLIC_BUF[4096];
 
 // XMS 移动与句柄表
-static struct {
-   DWORD Length;
-   WORD SourceHandle;
-   DWORD SourceOffset;
-   WORD DestHandle;
-   DWORD DestOffset;
-} xms_move;
+static XMS_DESCRIPTOR xms_move;
 
-static struct {
-   WORD offset_k;
-   WORD size_k;
-} xms_table[1000];
+static XMS_ALLOCATION xms_table[1000];
 
 // 线型与调色板缓冲
 WORD mylinetype[3];
 char TMP_tpal[768];
-void far *agi_arcdata;
+ARC_PARAM far *agi_arcdata;
 WORD agi_hg_off;
 WORD agi_hg_segm;
 static WORD imgsize;
@@ -411,18 +402,18 @@ void getimage(int left, int top, int right, int bottom, void far *bitmap)
    agi_hg_segm = FP_SEG(bitmap);
 
    if (imgsize != 0xffff && bitmap != (void far *)PUBLIC_BUF) {
-      *(WORD far *)bitmap = right - left + 1;
-      *(((WORD far *)bitmap) + 1) = bottom - top + 1;
-      UC_GetScreenBlock((char far *)bitmap + 4, right - left + 1, bottom - top + 1, left, top);
+      ((IMAGE_RECORD far *)bitmap)->MEMORY.WIDTH = right - left + 1;
+      ((IMAGE_RECORD far *)bitmap)->MEMORY.HEIGHT = bottom - top + 1;
+      UC_GetScreenBlock((char far *)((IMAGE_HEADER far *)bitmap + 1), right - left + 1, bottom - top + 1, left, top);
       return;
    }
 
    xms_h = UC_XMSgetscreen(left, top, right - left + 1, bottom - top + 1);
    if (xms_h != 0) {
-      *(WORD far *)bitmap = 0xffff;
-      *(((WORD far *)bitmap) + 1) = xms_h;
+      ((IMAGE_RECORD far *)bitmap)->XMS.TYPE = 0xffff;
+      ((IMAGE_RECORD far *)bitmap)->XMS.HANDLE = xms_h;
    } else {
-      *(WORD far *)bitmap = 0xfffe;
+      ((IMAGE_RECORD far *)bitmap)->FILE.TYPE = 0xfffe;
       itoa(FP_OFF(bitmap), buf1, 16);
       itoa(FP_SEG(bitmap), buf2, 16);
       strcat(buf2, buf1);
@@ -431,7 +422,7 @@ void getimage(int left, int top, int right, int bottom, void far *bitmap)
          strcat(cwd, "\\");
       strcat(cwd, buf2);
       strcat(cwd, ".DDB");
-      memmove((char far *)bitmap + 2, cwd, 80);
+      memmove(((IMAGE_RECORD far *)bitmap)->FILE.PATH, cwd, 80);
       UC_CreateScreenDDB(cwd, left, top, right - left + 1, bottom - top + 1);
    }
 }
@@ -444,7 +435,7 @@ void killimage(char *bitmap)
 
    agi_hg_off = FP_OFF(bitmap);
    agi_hg_segm = FP_SEG(bitmap);
-   type = *(WORD far *)MK_FP(agi_hg_segm, agi_hg_off);
+   type = ((IMAGE_RECORD far *)MK_FP(agi_hg_segm, agi_hg_off))->TYPE;
 
    if (type < (WORD)-2) {
       if (bitmap != (char far *)PUBLIC_BUF)
@@ -452,14 +443,14 @@ void killimage(char *bitmap)
       return;
    }
    if (type == (WORD)-2) {
-      memmove(path, (char far *)bitmap + 2, 80);
+      memmove(path, ((IMAGE_RECORD far *)bitmap)->FILE.PATH, 80);
       unlink(path);
       if (bitmap != (char far *)PUBLIC_BUF)
          MyFREE(bitmap);
       return;
    }
 
-   xms_h = *(WORD far *)MK_FP(agi_hg_segm, agi_hg_off + 2);
+   xms_h = ((IMAGE_RECORD far *)MK_FP(agi_hg_segm, agi_hg_off))->XMS.HANDLE;
    UC_FreeXMS(xms_h);
    if (bitmap != (char far *)PUBLIC_BUF)
       MyFREE(bitmap);
@@ -476,8 +467,8 @@ void putimage(int left, int top, void far *bitmap, int op)
    agi_hg_off = FP_OFF(bitmap);
    agi_hg_segm = FP_SEG(bitmap);
 
-   width = *(WORD far *)bitmap;
-   height = *(((WORD far *)bitmap) + 1);
+   width = ((IMAGE_RECORD far *)bitmap)->MEMORY.WIDTH;
+   height = ((IMAGE_RECORD far *)bitmap)->MEMORY.HEIGHT;
 
    if (width < (WORD)-2) {
       BYTE depth = (BYTE)UC_GetColourDepth();
@@ -493,7 +484,7 @@ void putimage(int left, int top, void far *bitmap, int op)
 
       old_mode = agi_writemode;
       setwritemode(op);
-      UC_PutScreenBlock((char far *)bitmap + 4, width, height, left, top);
+      UC_PutScreenBlock((char far *)((IMAGE_HEADER far *)bitmap + 1), width, height, left, top);
       setwritemode(old_mode);
 
       if (temp_buf != NULL) {
@@ -501,7 +492,7 @@ void putimage(int left, int top, void far *bitmap, int op)
          MyFREE(temp_buf);
       }
    } else if (width == (WORD)-2) {
-      memmove(cwd, (char far *)bitmap + 2, 80);
+      memmove(cwd, ((IMAGE_RECORD far *)bitmap)->FILE.PATH, 80);
       UC_DrawDDB(NULL, 0, cwd, left, top, getmaxx() - left, getmaxy() - top, 0, op);
    } else {
       old_mode = agi_writemode;
@@ -513,21 +504,24 @@ void putimage(int left, int top, void far *bitmap, int op)
 
 void arc(int x, int y, int stangle, int endangle, int radius)
 {
-   agi_arcdata = agi_arcbuf;
-   *(((WORD far *)agi_arcdata) + 1) = x;
-   *(((WORD far *)agi_arcdata) + 2) = y;
-   *(((WORD far *)agi_arcdata) + 3) = radius;
-   *(((WORD far *)agi_arcdata) + 4) = radius;
-   *(((WORD far *)agi_arcdata) + 5) = stangle;
-   *(((WORD far *)agi_arcdata) + 6) = endangle;
-   *(((char far *)agi_arcdata) + 1) = (char)agi_drawcolor;
-   *(char far *)agi_arcdata = 1;
+   agi_arcdata = (ARC_PARAM far *)agi_arcbuf;
+   agi_arcdata->X = x;
+   agi_arcdata->Y = y;
+   agi_arcdata->START_ANGLE = stangle;
+   agi_arcdata->END_ANGLE = endangle;
+   agi_arcdata->X_RADIUS = radius;
+   agi_arcdata->Y_RADIUS = radius;
+   agi_arcdata->DRAW_COLOR = (char)agi_drawcolor;
+   agi_arcdata->MODE = 0;
 
+   agi_hg_off = FP_OFF(agi_arcdata);
+   agi_hg_segm = FP_SEG(agi_arcdata);
    asm {
       push ds
-      mov si, word ptr agi_arcdata
+      mov si, agi_hg_off
       mov bh, 2
-      mov ds, word ptr agi_arcdata+2
+      mov ax, agi_hg_segm
+      mov ds, ax
       mov ax, 90fah
       int 48h
       pop ds
@@ -536,27 +530,38 @@ void arc(int x, int y, int stangle, int endangle, int radius)
 
 void circle(int x, int y, int radius)
 {
-   arc(x, y, 0, 360, radius);
+   asm {
+      mov ax, 90fah
+      mov bx, agi_drawcolor
+      mov bh, 0
+      mov cx, x
+      mov dx, y
+      mov si, radius
+      int 48h
+   }
 }
 
 void pieslice(int x, int y, int stangle, int endangle, int radius)
 {
-   agi_arcdata = agi_arcbuf;
-   *(((WORD far *)agi_arcdata) + 1) = x;
-   *(((WORD far *)agi_arcdata) + 2) = y;
-   *(((WORD far *)agi_arcdata) + 3) = radius;
-   *(((WORD far *)agi_arcdata) + 4) = radius;
-   *(((WORD far *)agi_arcdata) + 5) = stangle;
-   *(((WORD far *)agi_arcdata) + 6) = endangle;
-   *(((char far *)agi_arcdata) + 1) = (char)agi_drawcolor;
-   *(char far *)agi_arcdata = 2;
-   *(((WORD far *)agi_arcdata) + 7) = agi_fillcolor;
+   agi_arcdata = (ARC_PARAM far *)agi_arcbuf;
+   agi_arcdata->X = x;
+   agi_arcdata->Y = y;
+   agi_arcdata->START_ANGLE = stangle;
+   agi_arcdata->END_ANGLE = endangle;
+   agi_arcdata->X_RADIUS = radius;
+   agi_arcdata->Y_RADIUS = radius;
+   agi_arcdata->DRAW_COLOR = (char)agi_drawcolor;
+   agi_arcdata->MODE = 2;
+   agi_arcdata->FILL_COLOR = agi_fillcolor;
 
+   agi_hg_off = FP_OFF(agi_arcdata);
+   agi_hg_segm = FP_SEG(agi_arcdata);
    asm {
       push ds
-      mov si, word ptr agi_arcdata
+      mov si, agi_hg_off
       mov bh, 2
-      mov ds, word ptr agi_arcdata+2
+      mov ax, agi_hg_segm
+      mov ds, ax
       mov ax, 90fah
       int 48h
       pop ds
@@ -565,22 +570,25 @@ void pieslice(int x, int y, int stangle, int endangle, int radius)
 
 void sector(int x, int y, int stangle, int endangle, int xradius, int yradius)
 {
-   agi_arcdata = agi_arcbuf;
-   *(((WORD far *)agi_arcdata) + 1) = x;
-   *(((WORD far *)agi_arcdata) + 2) = y;
-   *(((WORD far *)agi_arcdata) + 3) = xradius;
-   *(((WORD far *)agi_arcdata) + 4) = yradius;
-   *(((WORD far *)agi_arcdata) + 5) = stangle;
-   *(((WORD far *)agi_arcdata) + 6) = endangle;
-   *(((char far *)agi_arcdata) + 1) = (char)agi_drawcolor;
-   *(char far *)agi_arcdata = 2;
-   *(((WORD far *)agi_arcdata) + 7) = agi_fillcolor;
+   agi_arcdata = (ARC_PARAM far *)agi_arcbuf;
+   agi_arcdata->X = x;
+   agi_arcdata->Y = y;
+   agi_arcdata->START_ANGLE = stangle;
+   agi_arcdata->END_ANGLE = endangle;
+   agi_arcdata->X_RADIUS = xradius;
+   agi_arcdata->Y_RADIUS = yradius;
+   agi_arcdata->DRAW_COLOR = (char)agi_drawcolor;
+   agi_arcdata->MODE = 2;
+   agi_arcdata->FILL_COLOR = agi_fillcolor;
 
+   agi_hg_off = FP_OFF(agi_arcdata);
+   agi_hg_segm = FP_SEG(agi_arcdata);
    asm {
       push ds
-      mov si, word ptr agi_arcdata
+      mov si, agi_hg_off
       mov bh, 2
-      mov ds, word ptr agi_arcdata+2
+      mov ax, agi_hg_segm
+      mov ds, ax
       mov ax, 90fah
       int 48h
       pop ds
@@ -589,21 +597,24 @@ void sector(int x, int y, int stangle, int endangle, int xradius, int yradius)
 
 void ellipse(int x, int y, int stangle, int endangle, int xradius, int yradius)
 {
-   agi_arcdata = agi_arcbuf;
-   *(((WORD far *)agi_arcdata) + 1) = x;
-   *(((WORD far *)agi_arcdata) + 2) = y;
-   *(((WORD far *)agi_arcdata) + 3) = xradius;
-   *(((WORD far *)agi_arcdata) + 4) = yradius;
-   *(((WORD far *)agi_arcdata) + 5) = stangle;
-   *(((WORD far *)agi_arcdata) + 6) = endangle;
-   *(((char far *)agi_arcdata) + 1) = (char)agi_drawcolor;
-   *(char far *)agi_arcdata = 0;
+   agi_arcdata = (ARC_PARAM far *)agi_arcbuf;
+   agi_arcdata->X = x;
+   agi_arcdata->Y = y;
+   agi_arcdata->START_ANGLE = stangle;
+   agi_arcdata->END_ANGLE = endangle;
+   agi_arcdata->X_RADIUS = xradius;
+   agi_arcdata->Y_RADIUS = yradius;
+   agi_arcdata->DRAW_COLOR = (char)agi_drawcolor;
+   agi_arcdata->MODE = 0;
 
+   agi_hg_off = FP_OFF(agi_arcdata);
+   agi_hg_segm = FP_SEG(agi_arcdata);
    asm {
       push ds
-      mov si, word ptr agi_arcdata
+      mov si, agi_hg_off
       mov bh, 2
-      mov ds, word ptr agi_arcdata+2
+      mov ax, agi_hg_segm
+      mov ds, ax
       mov ax, 90fah
       int 48h
       pop ds
@@ -612,22 +623,25 @@ void ellipse(int x, int y, int stangle, int endangle, int xradius, int yradius)
 
 void fillellipse(int x, int y, int xradius, int yradius)
 {
-   agi_arcdata = agi_arcbuf;
-   *(((WORD far *)agi_arcdata) + 1) = x;
-   *(((WORD far *)agi_arcdata) + 2) = y;
-   *(((WORD far *)agi_arcdata) + 3) = xradius;
-   *(((WORD far *)agi_arcdata) + 4) = yradius;
-   *(((WORD far *)agi_arcdata) + 5) = 0;
-   *(((WORD far *)agi_arcdata) + 6) = 360;
-   *(((char far *)agi_arcdata) + 1) = (char)agi_drawcolor;
-   *(char far *)agi_arcdata = 2;
-   *(((WORD far *)agi_arcdata) + 7) = agi_fillcolor;
+   agi_arcdata = (ARC_PARAM far *)agi_arcbuf;
+   agi_arcdata->X = x;
+   agi_arcdata->Y = y;
+   agi_arcdata->START_ANGLE = 0;
+   agi_arcdata->END_ANGLE = 360;
+   agi_arcdata->X_RADIUS = xradius;
+   agi_arcdata->Y_RADIUS = yradius;
+   agi_arcdata->DRAW_COLOR = (char)agi_drawcolor;
+   agi_arcdata->MODE = 2;
+   agi_arcdata->FILL_COLOR = agi_fillcolor;
 
+   agi_hg_off = FP_OFF(agi_arcdata);
+   agi_hg_segm = FP_SEG(agi_arcdata);
    asm {
       push ds
-      mov si, word ptr agi_arcdata
+      mov si, agi_hg_off
       mov bh, 2
-      mov ds, word ptr agi_arcdata+2
+      mov ax, agi_hg_segm
+      mov ds, ax
       mov ax, 90fah
       int 48h
       pop ds

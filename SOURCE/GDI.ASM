@@ -3,6 +3,20 @@
 .286
 locals
 
+; Flood-fill records. Equates describe existing storage only.
+FILL_SPAN6_LEFT equ 0
+FILL_SPAN6_RIGHT equ 2
+FILL_SPAN6_Y equ 4
+FILL_SPAN6_SIZE equ 6
+FILL_FRAME14_LEFT equ 0
+FILL_FRAME14_RIGHT equ 2
+FILL_FRAME14_Y equ 4
+FILL_FRAME14_Y_STEP equ 6
+FILL_FRAME14_SAVE_BX equ 8
+FILL_FRAME14_SAVE_CX equ 0Ah
+FILL_FRAME14_SAVE_DX equ 0Ch
+FILL_FRAME14_SIZE equ 0Eh
+
 NEWGROUP group _NEWTEXT
 
 _NEWTEXT segment byte public 'CODE'
@@ -2013,25 +2027,25 @@ L_21AF:
     mov     di, offset L_0F51
     mov     cx,word ptr [L_1753]
     mov     dx,word ptr [L_1755]
-    mov     [di+4h],dx
+    mov     [di+FILL_FRAME14_Y],dx
     mov     word ptr [L_2004],dx
     call    L_221E
-    mov     [di],cx
+    mov     [di+FILL_FRAME14_LEFT],cx
     mov     word ptr [L_2000],cx
     mov     cx,word ptr [L_1753]
     call    L_2246
-    mov     [di+2h],cx
+    mov     [di+FILL_FRAME14_RIGHT],cx
     mov     word ptr [L_2002],cx
     call    L_2441
-    mov     word ptr [di+6h],1h
+    mov     word ptr [di+FILL_FRAME14_Y_STEP],1h
     call    L_22DB
     mov     ax,word ptr [L_2000]
-    mov     [di],ax
+    mov     [di+FILL_FRAME14_LEFT],ax
     mov     ax,word ptr [L_2002]
-    mov     [di+2h],ax
+    mov     [di+FILL_FRAME14_RIGHT],ax
     mov     ax,word ptr [L_2004]
-    mov     [di+4h],ax
-    mov     word ptr [di+6h],0FFFFh
+    mov     [di+FILL_FRAME14_Y],ax
+    mov     word ptr [di+FILL_FRAME14_Y_STEP],0FFFFh
     call    L_22E1
 L_2215:
     mov     ax,701h
@@ -2093,17 +2107,17 @@ L_226E:
     mov     cx,word ptr [L_2006]
 L_2278:
     jcxz    short L_2296
-    mov     ax,[bx]
-    cmp     ax,[di]
+    mov     ax,[bx+FILL_SPAN6_LEFT]
+    cmp     ax,[di+FILL_FRAME14_LEFT]
     jnz     short L_2290
-    mov     ax,[bx+2h]
-    cmp     ax,[di+2h]
+    mov     ax,[bx+FILL_SPAN6_RIGHT]
+    cmp     ax,[di+FILL_FRAME14_RIGHT]
     jnz     short L_2290
-    mov     ax,[bx+4h]
-    cmp     ax,[di+4h]
+    mov     ax,[bx+FILL_SPAN6_Y]
+    cmp     ax,[di+FILL_FRAME14_Y]
     jz      short L_2298
 L_2290:
-    add     bx,6h
+    add     bx,FILL_SPAN6_SIZE
     dec     cx
     jmp     short L_2278
 L_2296:
@@ -2132,12 +2146,12 @@ L_22B1:
     add     bx,ax
     shl     bx,1
     add     bx,offset L_0751
-    mov     ax,[di]
-    mov     [bx],ax
-    mov     ax,[di+2h]
-    mov     [bx+2h],ax
-    mov     ax,[di+4h]
-    mov     [bx+4h],ax
+    mov     ax,[di+FILL_FRAME14_LEFT]
+    mov     [bx+FILL_SPAN6_LEFT],ax
+    mov     ax,[di+FILL_FRAME14_RIGHT]
+    mov     [bx+FILL_SPAN6_RIGHT],ax
+    mov     ax,[di+FILL_FRAME14_Y]
+    mov     [bx+FILL_SPAN6_Y],ax
     inc     word ptr [L_2006]
     pop     dx
     pop     bx
@@ -2151,8 +2165,8 @@ L_22E0:
 L_22E1:
     call    L_229C
 L_22E4:
-    mov     dx,[di+4h]
-    cmp     word ptr [di+6h],1h
+    mov     dx,[di+FILL_FRAME14_Y]
+    cmp     word ptr [di+FILL_FRAME14_Y_STEP],1h
     jnz     short L_22FB
     cmp     dx,word ptr [L_1807]
     jnc     short L_22E0
@@ -2165,8 +2179,8 @@ L_22FB:
     or      dx,dx
     jz      short L_22E0
 L_2305:
-    add     dx,[di+6h]
-    mov     cx,[di]
+    add     dx,[di+FILL_FRAME14_Y_STEP]
+    mov     cx,[di+FILL_FRAME14_LEFT]
 L_230A:
     call    L_221E
     call    L_2497
@@ -2174,18 +2188,18 @@ L_230A:
     jnz     short L_231F
     mov     ax,cx
     inc     ax
-    cmp     ax,[di+2h]
+    cmp     ax,[di+FILL_FRAME14_RIGHT]
     jnc     short L_22E0
     inc     cx
 L_231F:
     mov     ax,cx
     inc     ax
-    cmp     ax,[di]
+    cmp     ax,[di+FILL_FRAME14_LEFT]
     jnc     short L_236B
     push    cx
     push    dx
-    mov     cx,[di]
-    mov     dx,[di+4h]
+    mov     cx,[di+FILL_FRAME14_LEFT]
+    mov     dx,[di+FILL_FRAME14_Y]
     dec     cx
     call    L_2246
     mov     ax,cx
@@ -2193,35 +2207,35 @@ L_231F:
     pop     cx
     cmp     cx,ax
     jnc     short L_236B
-    neg     word ptr [di+6h]
+    neg     word ptr [di+FILL_FRAME14_Y_STEP]
     call    L_229C
-    neg     word ptr [di+6h]
-    mov     [di+0Ah],cx
-    mov     [di+0Ch],dx
-    add     di,0Eh
-    mov     [di],cx
-    mov     ax,[di-0Eh]
+    neg     word ptr [di+FILL_FRAME14_Y_STEP]
+    mov     [di+FILL_FRAME14_SAVE_CX],cx
+    mov     [di+FILL_FRAME14_SAVE_DX],dx
+    add     di,FILL_FRAME14_SIZE
+    mov     [di+FILL_FRAME14_LEFT],cx
+    mov     ax,[di-FILL_FRAME14_SIZE+FILL_FRAME14_LEFT]
     dec     ax
-    mov     [di+2h],ax
-    mov     [di+4h],dx
-    mov     ax,[di-8h]
+    mov     [di+FILL_FRAME14_RIGHT],ax
+    mov     [di+FILL_FRAME14_Y],dx
+    mov     ax,[di-FILL_FRAME14_SIZE+FILL_FRAME14_Y_STEP]
     neg     ax
-    mov     [di+6h],ax
+    mov     [di+FILL_FRAME14_Y_STEP],ax
     call    L_22DB
-    sub     di,0Eh
-    mov     cx,[di+0Ah]
-    mov     dx,[di+0Ch]
+    sub     di,FILL_FRAME14_SIZE
+    mov     cx,[di+FILL_FRAME14_SAVE_CX]
+    mov     dx,[di+FILL_FRAME14_SAVE_DX]
 L_236B:
     mov     bx,cx
     call    L_2246
     mov     ax,cx
     dec     ax
-    cmp     ax,[di+2h]
+    cmp     ax,[di+FILL_FRAME14_RIGHT]
     jng     short L_23C4
     push    cx
     push    dx
-    mov     cx,[di+2h]
-    mov     dx,[di+4h]
+    mov     cx,[di+FILL_FRAME14_RIGHT]
+    mov     dx,[di+FILL_FRAME14_Y]
     inc     cx
     call    L_221E
     mov     ax,cx
@@ -2229,29 +2243,29 @@ L_236B:
     pop     cx
     cmp     ax,cx
     jnc     short L_23C4
-    neg     word ptr [di+6h]
+    neg     word ptr [di+FILL_FRAME14_Y_STEP]
     call    L_229C
-    neg     word ptr [di+6h]
-    mov     [di+8h],bx
-    mov     [di+0Ah],cx
-    mov     [di+0Ch],dx
-    add     di,0Eh
-    mov     ax,[di-0Ch]
+    neg     word ptr [di+FILL_FRAME14_Y_STEP]
+    mov     [di+FILL_FRAME14_SAVE_BX],bx
+    mov     [di+FILL_FRAME14_SAVE_CX],cx
+    mov     [di+FILL_FRAME14_SAVE_DX],dx
+    add     di,FILL_FRAME14_SIZE
+    mov     ax,[di-FILL_FRAME14_SIZE+FILL_FRAME14_RIGHT]
     inc     ax
-    mov     [di],ax
-    mov     [di+2h],cx
-    mov     [di+4h],dx
-    mov     ax,[di-8h]
+    mov     [di+FILL_FRAME14_LEFT],ax
+    mov     [di+FILL_FRAME14_RIGHT],cx
+    mov     [di+FILL_FRAME14_Y],dx
+    mov     ax,[di-FILL_FRAME14_SIZE+FILL_FRAME14_Y_STEP]
     neg     ax
-    mov     [di+6h],ax
+    mov     [di+FILL_FRAME14_Y_STEP],ax
     call    L_22DB
-    sub     di,0Eh
-    mov     bx,[di+8h]
-    mov     cx,[di+0Ah]
-    mov     dx,[di+0Ch]
+    sub     di,FILL_FRAME14_SIZE
+    mov     bx,[di+FILL_FRAME14_SAVE_BX]
+    mov     cx,[di+FILL_FRAME14_SAVE_CX]
+    mov     dx,[di+FILL_FRAME14_SAVE_DX]
 L_23C4:
     push    cx
-    mov     cx,[di+2h]
+    mov     cx,[di+FILL_FRAME14_RIGHT]
     call    L_2246
     call    L_2497
     cmp     al,byte ptr [L_1752]
@@ -2271,47 +2285,47 @@ L_23D5:
     pop     dx
     pop     cx
     pop     bx
-    neg     word ptr [di+6h]
+    neg     word ptr [di+FILL_FRAME14_Y_STEP]
     call    L_229C
-    neg     word ptr [di+6h]
-    mov     [di+8h],bx
-    mov     [di+0Ah],cx
-    mov     [di+0Ch],dx
-    add     di,0Eh
-    mov     [di],bx
-    mov     [di+2h],cx
-    mov     [di+4h],dx
-    mov     ax,[di-8h]
-    mov     [di+6h],ax
+    neg     word ptr [di+FILL_FRAME14_Y_STEP]
+    mov     [di+FILL_FRAME14_SAVE_BX],bx
+    mov     [di+FILL_FRAME14_SAVE_CX],cx
+    mov     [di+FILL_FRAME14_SAVE_DX],dx
+    add     di,FILL_FRAME14_SIZE
+    mov     [di+FILL_FRAME14_LEFT],bx
+    mov     [di+FILL_FRAME14_RIGHT],cx
+    mov     [di+FILL_FRAME14_Y],dx
+    mov     ax,[di-FILL_FRAME14_SIZE+FILL_FRAME14_Y_STEP]
+    mov     [di+FILL_FRAME14_Y_STEP],ax
     call    L_22DB
-    sub     di,0Eh
-    mov     bx,[di+8h]
-    mov     cx,[di+0Ah]
+    sub     di,FILL_FRAME14_SIZE
+    mov     bx,[di+FILL_FRAME14_SAVE_BX]
+    mov     cx,[di+FILL_FRAME14_SAVE_CX]
     inc     cx
-    mov     dx,[di+0Ch]
+    mov     dx,[di+FILL_FRAME14_SAVE_DX]
     jmp     near ptr L_230A
 L_241F:
-    xchg    bx,[di]
-    xchg    cx,[di+2h]
-    xchg    dx,[di+4h]
+    xchg    bx,[di+FILL_FRAME14_LEFT]
+    xchg    cx,[di+FILL_FRAME14_RIGHT]
+    xchg    dx,[di+FILL_FRAME14_Y]
     call    L_226E
     jz      short L_2432
     call    L_2441
     jmp     near ptr L_22E4
 L_2432:
-    mov     [di],bx
-    mov     [di+2h],cx
-    mov     [di+4h],dx
-    neg     word ptr [di+6h]
+    mov     [di+FILL_FRAME14_LEFT],bx
+    mov     [di+FILL_FRAME14_RIGHT],cx
+    mov     [di+FILL_FRAME14_Y],dx
+    neg     word ptr [di+FILL_FRAME14_Y_STEP]
     call    L_229C
     ret     
 L_2441:
     push    bx
     push    cx
     push    dx
-    mov     cx,[di]
-    mov     si,[di+2h]
-    mov     dx,[di+4h]
+    mov     cx,[di+FILL_FRAME14_LEFT]
+    mov     si,[di+FILL_FRAME14_RIGHT]
+    mov     dx,[di+FILL_FRAME14_Y]
     call    L_2453
     pop     dx
     pop     cx

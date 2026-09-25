@@ -1,4 +1,51 @@
-#ifndef _INTERNAL_HDR_H
-#define _INTERNAL_HDR_H
+#ifndef UCDOS_AGIDRV_H
+#define UCDOS_AGIDRV_H
 #include "sdk.h"
+
+typedef struct ARC_PARAM {
+   BYTE MODE;
+   BYTE DRAW_COLOR;
+   int X, Y;
+   int X_RADIUS, Y_RADIUS;
+   int START_ANGLE, END_ANGLE;
+   WORD FILL_COLOR;
+} ARC_PARAM;
+
+typedef struct IMAGE_HEADER {
+   WORD WIDTH, HEIGHT;
+} IMAGE_HEADER;
+
+typedef struct IMAGE_XMS {
+   WORD TYPE, HANDLE;
+} IMAGE_XMS;
+
+typedef struct IMAGE_FILE {
+   WORD TYPE;
+   char PATH[80];
+} IMAGE_FILE;
+
+typedef union IMAGE_RECORD {
+   WORD TYPE;
+   IMAGE_HEADER MEMORY;
+   IMAGE_XMS XMS;
+   IMAGE_FILE FILE;
+} IMAGE_RECORD;
+
+typedef union XMS_ADDRESS {
+   DWORD OFFSET;
+   void far *PTR;
+} XMS_ADDRESS;
+
+typedef struct XMS_DESCRIPTOR {
+   DWORD LENGTH;
+   WORD SOURCE_HANDLE;
+   XMS_ADDRESS SOURCE;
+   WORD DEST_HANDLE;
+   XMS_ADDRESS DEST;
+} XMS_DESCRIPTOR;
+
+typedef struct XMS_ALLOCATION {
+   WORD OFFSET_K;
+   WORD SIZE_K;
+} XMS_ALLOCATION;
 #endif

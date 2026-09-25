@@ -28,8 +28,8 @@ void UC_CheckXMS(void)
    char status;
 
    for (i = 0; i < 1000; i++) {
-      xms_table[i].offset_k = 0;
-      xms_table[i].size_k = 0;
+      xms_table[i].OFFSET_K = 0;
+      xms_table[i].SIZE_K = 0;
    }
    xms_entry = NULL;
 
@@ -97,9 +97,9 @@ int UC_AllocXMS(WORD size, WORD *handle)
       return 0;
 
    for (i = 0; i < 1000; i++) {
-      if (xms_table[i].size_k == 0) {
-         xms_table[i].size_k = size;
-         xms_table[i].offset_k = used_xms_kb;
+      if (xms_table[i].SIZE_K == 0) {
+         xms_table[i].SIZE_K = size;
+         xms_table[i].OFFSET_K = used_xms_kb;
          used_xms_kb += size;
          *handle = i + 1;
          return 1;
@@ -117,68 +117,62 @@ void UC_FreeXMS(WORD handle)
 {
    int i;
    WORD off_k, sz_k;
-   struct {
-      DWORD Length;
-      WORD SourceHandle;
-      DWORD SourceOffset;
-      WORD DestHandle;
-      DWORD DestOffset;
-   } move;
+   XMS_DESCRIPTOR move;
 
    if (xms_entry == NULL || !UC_VerifyXMSHandle(handle))
       return;
 
    handle--;
-   if ((move.Length = get1024(used_xms_kb - xms_table[handle].offset_k - xms_table[handle].size_k)) != 0) {
-      move.SourceHandle = global_xms_handle;
-      move.SourceOffset = get1024(xms_table[handle].offset_k + xms_table[handle].size_k);
-      move.DestHandle = global_xms_handle;
-      move.DestOffset = get1024(xms_table[handle].offset_k);
+   if ((move.LENGTH = get1024(used_xms_kb - xms_table[handle].OFFSET_K - xms_table[handle].SIZE_K)) != 0) {
+      move.SOURCE_HANDLE = global_xms_handle;
+      move.SOURCE.OFFSET = get1024(xms_table[handle].OFFSET_K + xms_table[handle].SIZE_K);
+      move.DEST_HANDLE = global_xms_handle;
+      move.DEST.OFFSET = get1024(xms_table[handle].OFFSET_K);
       UC_MoveXMS(&move);
    }
 
-   used_xms_kb -= xms_table[handle].size_k;
-   off_k = xms_table[handle].offset_k;
-   sz_k = xms_table[handle].size_k;
-   xms_table[handle].size_k = 0;
+   used_xms_kb -= xms_table[handle].SIZE_K;
+   off_k = xms_table[handle].OFFSET_K;
+   sz_k = xms_table[handle].SIZE_K;
+   xms_table[handle].SIZE_K = 0;
 
    for (i = 0; i < 1000; i++) {
-      if (xms_table[i].size_k != 0 && xms_table[i].offset_k > off_k) {
-         xms_table[i].offset_k -= sz_k;
+      if (xms_table[i].SIZE_K != 0 && xms_table[i].OFFSET_K > off_k) {
+         xms_table[i].OFFSET_K -= sz_k;
       }
    }
 }
 
 int UC_VerifyXMSHandle(WORD handle)
 {
-   if (xms_entry != NULL && handle != 0 && handle <= 1000 && xms_table[handle - 1].size_k != 0)
+   if (xms_entry != NULL && handle != 0 && handle <= 1000 && xms_table[handle - 1].SIZE_K != 0)
       return 1;
    return 0;
 }
 
 void UC_InitToXMS(WORD handle, void *buf, DWORD offset)
 {
-   xms_move.SourceHandle = 0;
-   memmove(&xms_move.SourceOffset, &buf, 4);
-   xms_move.DestHandle = global_xms_handle;
-   xms_move.DestOffset = get1024(xms_table[handle - 1].offset_k) + offset;
+   xms_move.SOURCE_HANDLE = 0;
+   memmove(&xms_move.SOURCE.OFFSET, &buf, 4);
+   xms_move.DEST_HANDLE = global_xms_handle;
+   xms_move.DEST.OFFSET = get1024(xms_table[handle - 1].OFFSET_K) + offset;
 }
 
 void UC_InitFromXMS(WORD handle, void *buf, DWORD offset)
 {
-   xms_move.DestHandle = 0;
-   memmove(&xms_move.DestOffset, &buf, 4);
-   xms_move.SourceHandle = global_xms_handle;
-   xms_move.SourceOffset = get1024(xms_table[handle - 1].offset_k) + offset;
+   xms_move.DEST_HANDLE = 0;
+   memmove(&xms_move.DEST.OFFSET, &buf, 4);
+   xms_move.SOURCE_HANDLE = global_xms_handle;
+   xms_move.SOURCE.OFFSET = get1024(xms_table[handle - 1].OFFSET_K) + offset;
 }
 
 void UC_MoveToXMS(WORD count)
 {
    if (count & 1)
       count++;
-   xms_move.Length = count;
+   xms_move.LENGTH = count;
    UC_MoveXMS(&xms_move);
-   xms_move.DestOffset += xms_move.Length;
+   xms_move.DEST.OFFSET += xms_move.LENGTH;
 }
 
 void UC_MoveFromXMS(WORD count)
@@ -191,9 +185,9 @@ void UC_MoveFromXMS(WORD count)
       return;
 
    if (count == 1) {
-      dst = *(void far **)&xms_move.DestOffset;
-      xms_move.Length = 2;
-      memmove(&xms_move.DestOffset, &byte_buf, 4);
+      dst = xms_move.DEST.PTR;
+      xms_move.LENGTH = 2;
+      memmove(&xms_move.DEST.OFFSET, &byte_buf, 4);
       UC_MoveXMS(&xms_move);
       asm {
          mov word ptr BYTE_PTR+2, ss
@@ -214,27 +208,27 @@ void UC_MoveFromXMS(WORD count)
          pop ds
          pop es
       }
-      *(void far **)&xms_move.DestOffset = dst;
-      xms_move.SourceOffset += 2;
+      xms_move.DEST.PTR = dst;
+      xms_move.SOURCE.OFFSET += 2;
    } else {
       asm {
          test word ptr count, 1
          jz short XMS_EVEN_COUNT
       }
-      xms_move.Length = count - 1;
+      xms_move.LENGTH = count - 1;
       UC_MoveXMS(&xms_move);
-      xms_move.SourceOffset += xms_move.Length - 1;
-      dst = *(void far **)&xms_move.DestOffset;
-      *(DWORD *)&xms_move.DestOffset += xms_move.Length - 1;
-      xms_move.Length = 2;
+      xms_move.SOURCE.OFFSET += xms_move.LENGTH - 1;
+      dst = xms_move.DEST.PTR;
+      xms_move.DEST.OFFSET += xms_move.LENGTH - 1;
+      xms_move.LENGTH = 2;
       UC_MoveXMS(&xms_move);
-      xms_move.SourceOffset += 3;
-      *(void far **)&xms_move.DestOffset = dst;
+      xms_move.SOURCE.OFFSET += 3;
+      xms_move.DEST.PTR = dst;
       asm jmp short XMS_READ_DONE
 XMS_EVEN_COUNT:
-      xms_move.Length = count;
+      xms_move.LENGTH = count;
       UC_MoveXMS(&xms_move);
-      xms_move.SourceOffset += xms_move.Length;
+      xms_move.SOURCE.OFFSET += xms_move.LENGTH;
 XMS_READ_DONE:
       ;
    }

@@ -1,4 +1,4 @@
-#ifndef _INTERNAL_HDR_H
-#define _INTERNAL_HDR_H
+#ifndef _UCDOS_PRIVATE_AGI_WIN_H
+#define _UCDOS_PRIVATE_AGI_WIN_H
 #include "sdk.h"
 #endif
