@@ -58,7 +58,7 @@ char far agi_arcbuf[16];
 // 文本与显示环境状态
 TEXTINFO textinfo = { 0, 0, NULL, 0, 0, 8, 16, 15, 0, 0, 0, NULL, 0, 1 };
 char *GRAPH_BUFFER = NULL;
-WORD BUFFER_LEN = 10240;
+WORD BUFFER_LEN = 3880;
 int agi_drawcolor = 15;
 int agi_fillcolor = 15;
 int agi_fillpattern = 1;
@@ -265,12 +265,11 @@ void bar3d(int left, int top, int right, int bottom, int depth, int topflag)
 
 void setwritemode(int mode)
 {
-   agi_writemode = mode;
+   if (mode > 3)
+      mode = 3;
    asm {
       mov ax, 90f5h
-      mov dl, byte ptr mode
-      mov bh, dl
-      mov bl, 5
+      mov bx, mode
       int 48h
    }
 }
@@ -858,10 +857,12 @@ void floodfill(int x, int y, int border)
 int getmaxcolor(void)
 {
    int c;
+   int reg_bx;
    asm {
       mov ax, 90efh
       int 48h
       mov c, dx
+      mov reg_bx, bx
    }
    if (c == 1)
       return 15;
@@ -871,7 +872,7 @@ int getmaxcolor(void)
       return 1;
    if (c > 11)
       return 65535U;
-   return 0;
+   return reg_bx;
 }
 
 int getmaxx(void)

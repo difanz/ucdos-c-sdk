@@ -955,11 +955,11 @@ void far UC_UpdateListBox(WINDOWS far *wnd, LISTBOX far *box, char far **list, i
         while (strlen(buf) < box->width)
             strcat(buf, " ");
         if (box->sbar->cure == top_count) {
-            setcolor(wnd->title_fgc_dis);
-            setcolorbm(wnd->title_bkc_dis);
+            setcolor(wnd->title_fgc);
+            setcolorbm(wnd->title_bkc);
         } else {
-            setcolor(wnd->menubkc);
-            setcolorbm(wnd->disablecolor);
+            setcolor(wnd->linecolor);
+            setcolorbm(wnd->boardcolor);
         }
         outtextbm(x1, line_y, buf);
         line_y += wnd->syschar_size + 2;
@@ -1021,9 +1021,9 @@ void far UC_DisplayInputBox(WINDOWS far *wnd, INPUTLINE far *inp, int left, int 
     int active;
 
     UC_MouseHide();
-    setfillstyle(1, wnd->disablecolor);
+    setfillstyle(1, wnd->boardcolor);
     bar(left, top, right, bottom);
-    setcolor(wnd->menubkc);
+    setcolor(wnd->linecolor);
     rectangle(left, top, right, bottom);
     if (wnd->cure_type == 2 && UC_GetInputBox(wnd, wnd->cure_num) == inp)
         active = 0;

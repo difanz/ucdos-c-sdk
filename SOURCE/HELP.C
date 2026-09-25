@@ -1062,7 +1062,8 @@ void HelpShowPage(void)
     int diff;
 
     msg = UC_GetMessage();
-    UC_SetMessage(msg);
+    if (msg != 0x1388 && msg != 0x1389)
+        UC_SetMessage(msg);
     UC_GetClientRect(gpwndHelp, &rect);
 
     fseek(gpHelpFile, gsttContent.text_offset, SEEK_SET);
@@ -1178,6 +1179,7 @@ draw_link:
                 if (diff < gpsttHelpRect[link_idx].len) {
                     if (UC_CheckEditPoint(gpcTextString + text_idx, diff) == 2) {
                         diff++;
+                        gaTextBuf[0] = ' ';
                         memmove(gaTextBuf + 1, gpcTextString + text_idx + diff, gpsttHelpRect[link_idx].len - diff);
                         gaTextBuf[gpsttHelpRect[link_idx].len - diff + 1] = '\0';
                     } else {
@@ -1280,9 +1282,8 @@ void HelpShowWin(long target_offset, int x, int y)
             lines++;
             if (cur_len > max_len) max_len = cur_len;
             cur_len = 0;
-        } else {
-            cur_len++;
         }
+        cur_len++;
     }
 
     max_len--;
@@ -1342,38 +1343,41 @@ void HelpShowWin(long target_offset, int x, int y)
         setlinestyle(4, (i % 2 == 1) ? 0xaaaa : 0x5555, 1);
         line(x2 + 20, i, x1, i);
     }
-    for (i = y2 + 10; i > y1; i--) {
+    for (i = y2 + 10; i >= y1; i--) {
         setlinestyle(4, (i % 2 == 1) ? 0xaaaa : 0x5555, 1);
-        line(x2 + 20, i, x2 + 10, i);
+        line(x2 + 20, i, x2 + 11, i);
     }
 
-    setlinestyle(0, 1, 1);
-    setfillstyle(SOLID_FILL, 7);
+    setlinestyle(0, 0, 1);
+    setfillstyle(SOLID_FILL, 15);
     bar(x1 - 8, y1 - 8, x2 + 8, y2 + 8);
 
     setcolor(0);
     prev_space = UC_GetLineSpace();
-    UC_SetLineSpace(2);
+    UC_SetLineSpace(UC_RetReal(2));
     settextstyle(0, 0, gpwndHelp->syschar_size);
 
     draw_rc.left = x1;
     draw_rc.top = y1;
     draw_rc.right = x2;
     draw_rc.bottom = y2;
-    UC_DrawText(gpwndHelp, &draw_rc, 0, text);
+    UC_DrawText(NULL, &draw_rc, 0, text);
     UC_SetLineSpace(prev_space);
 
     UC_MouseShow();
 
-    while (!kbhit() && !UC_MouseCheck()) {
-        /* idle wait */
-    }
-
-    if (UC_MouseCheck()) {
-        UC_WaitFreeMouse(NULL, 0, 0, 0, 0, NULL);
-    } else {
-        key = getch();
-        if (key == 0) getch();
+    for (;;) {
+        UC_MouseCheck();
+        if (MOUSE_AGI.s & 3) {
+            UC_WaitFreeMouse(NULL, 0, 0, 0, 0, NULL);
+            break;
+        }
+        if (kbhit()) {
+            key = getch();
+            if (key == 0)
+                getch();
+            break;
+        }
     }
 
     UC_MouseHide();

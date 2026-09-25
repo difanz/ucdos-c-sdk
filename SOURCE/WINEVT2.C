@@ -113,13 +113,12 @@ void far UC_DoInputLine(WINDOWS *wnd, int key)
     inp = UC_GetInputBox(wnd, wnd->cure_num);
 
     if (key == 0x1c0d) {
-        if (inp->length != 0) {
+        if (inp->length != 0 || BOXPOP) {
             if (inp->fun_sele)
                 inp->fun_sele();
             return;
         }
-        if (!BOXPOP)
-            key = 0x5100;
+        key = 0x5100;
     }
 
     if (key == 0x11b)

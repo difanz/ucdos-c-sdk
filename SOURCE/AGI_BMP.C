@@ -442,7 +442,7 @@ int UC_CreateIcon(char *ico_addr, char **xor_buf, char **and_buf,
     for (i = 0; i < depth; i++) {
         memmove(sbuf, ico_addr, and_rowbytes);
         ico_addr += and_rowbytes;
-        UC_DIB2DDB(sbuf, dbuf, spal, dpal, 15, 0, (int)icodib.width, i, 1);
+        UC_DIB2DDB(sbuf, dbuf, spal, dpal, color, 0, (int)icodib.width, i, 1);
         memmove(*and_buf + (depth - i - 1) * ddb_rowbytes, dbuf, ddb_rowbytes);
     }
 
@@ -786,10 +786,14 @@ WORD UC_XMSLoadDDB(char *path)
             UC_InitToXMS(handle, GRAPH_BUFFER, 0L);
             memmove(GRAPH_BUFFER, &hdr.width, 2);
             memmove(GRAPH_BUFFER + 2, &hdr.depth, 2);
+            UC_MoveToXMS(4);
             do {
-                UC_MoveToXMS(block_lines * rowbytes);
                 n = fread(GRAPH_BUFFER, rowbytes, block_lines, fp);
-            } while (n != 0);
+                if (n == 0)
+                    break;
+                UC_MoveToXMS(n * rowbytes);
+                block_lines = n;
+            } while (1);
 
             fclose(fp);
             unlink("tmpzoom.ddb");
@@ -1005,6 +1009,7 @@ int UC_DrawDDB(WINDOWS *wnd, WORD handle, char *path, int x, int y,
     int cur_x, cur_y;
     int chunk_lines;
     int n;
+    char vga_pal[768];
 
     if (path == NULL || strlen(path) == 0)
         return 0;
@@ -1027,9 +1032,9 @@ int UC_DrawDDB(WINDOWS *wnd, WORD handle, char *path, int x, int y,
     if (bpp == 2 && (windows_exec || !windows_rdbk)) {
         fp = fopen(palpath, "rb");
         if (fp != NULL) {
-            fread(PUBLIC_BUF, 1, 0x300, fp);
+            fread(vga_pal, 1, 0x300, fp);
             fclose(fp);
-            setvgapal(PUBLIC_BUF);
+            setvgapal(vga_pal);
         }
     }
 
@@ -1099,13 +1104,13 @@ int UC_DrawDDB(WINDOWS *wnd, WORD handle, char *path, int x, int y,
 
 draw_it:
     block_lines = BUFFER_LEN / rowbytes;
-    if (wmode == 1) {
-        if (target_w < maxw)
-            x += (maxw - target_w) >> 1;
-        if (target_h < maxh)
-            y += (maxh - target_h) >> 1;
+    if (smode == 1) {
+        if ((unsigned)maxw > (unsigned)target_w)
+            x += ((unsigned)maxw - (unsigned)target_w) >> 1;
+        if ((unsigned)maxh > (unsigned)target_h)
+            y += ((unsigned)maxh - (unsigned)target_h) >> 1;
     }
-    if (wmode == 2) {
+    if (smode == 2) {
         x = 0;
         y = 0;
     }
@@ -1131,47 +1136,53 @@ draw_it:
     bottom = top + height - 1;
 
     if (UC_SecondViewport(left, top, right, bottom)) {
-        setwritemode(smode);
+        setwritemode(wmode);
         UC_MouseHide();
 
-        if (wmode == 2) {
-            for (cur_y = y; cur_y < bottom; cur_y += target_h) {
-                for (cur_x = x; cur_x < right; cur_x += target_w) {
+        if (smode == 2) {
+            cur_y = y;
+            do {
+                cur_x = x;
+                do {
                     if (!UC_VerifyXMSHandle(handle)) {
                         fseek(fp, 9L, SEEK_SET);
-                        if (cur_x <= right && left <= cur_x + target_w &&
+                        if (cur_x <= right &&
+                            (unsigned)left <= (unsigned)(cur_x + target_w) &&
                             cur_y <= bottom && top <= cur_y + target_h) {
                             chunk_lines = cur_y;
                             while (chunk_lines < cur_y + target_h) {
                                 n = fread(GRAPH_BUFFER, rowbytes, block_lines, fp);
-                                if (n <= 0) break;
-                                if (top <= chunk_lines + n)
+                                if ((unsigned)top <= (unsigned)(chunk_lines + n))
                                     UC_PutScreenBlock(GRAPH_BUFFER, target_w, n, cur_x, chunk_lines);
                                 chunk_lines += n;
-                                if (chunk_lines > bottom) break;
+                                if (chunk_lines > bottom)
+                                    break;
                             }
                         }
                     } else {
                         UC_XMSputscreen(handle, cur_x, cur_y);
                     }
-                }
+                    cur_x += target_w;
+                } while (cur_x < right);
                 if (!UC_WindowVerify(wnd))
                     x = 0;
                 else
                     x = wnd->left + wnd->vx;
-            }
+                cur_y += target_h;
+            } while (cur_y < bottom);
         } else {
-            if (x <= right && left <= x + target_w &&
+            if (x <= right &&
+                (unsigned)left <= (unsigned)(x + target_w) &&
                 y <= bottom && top <= y + target_h) {
                 if (!UC_VerifyXMSHandle(handle)) {
                     chunk_lines = y;
                     while (chunk_lines < y + target_h) {
                         n = fread(GRAPH_BUFFER, rowbytes, block_lines, fp);
-                        if (n <= 0) break;
-                        if (top <= chunk_lines + n)
+                        if ((unsigned)top <= (unsigned)(chunk_lines + n))
                             UC_PutScreenBlock(GRAPH_BUFFER, target_w, n, x, chunk_lines);
                         chunk_lines += n;
-                        if (chunk_lines > bottom) break;
+                        if (chunk_lines > bottom)
+                            break;
                     }
                 } else {
                     UC_XMSputscreen(handle, x, y);

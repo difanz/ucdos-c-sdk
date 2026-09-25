@@ -642,7 +642,7 @@ int far UC_CheckListBox(WINDOWS far *wnd)
     int index = 1;
 
     while (box != NULL) {
-        if ((!BOXPOP || (INPOPINP != 0 && (INPOPINP)->box == box)) && box->hide) {
+        if ((!BOXPOP || INPOPINP->box == box) && box->hide) {
             int x1 = wnd->left + wnd->vx + box->left;
             int y1 = wnd->top + wnd->vy + box->top;
             int x2 = x1 + ((box->width * wnd->syschar_size) >> 1) - 1;
@@ -684,7 +684,7 @@ SCROLLBAR far * far UC_CheckScrollbar(WINDOWS far *wnd)
     int x, y;
 
     while (sbar != NULL) {
-        if ((!BOXPOP || (INPOPINP != 0 && (INPOPINP)->box != NULL && (INPOPINP)->box->sbar == sbar)) &&
+        if ((!BOXPOP || INPOPINP->box->sbar == sbar) &&
             sbar->hide && sbar->max > 1.0) {
 
             UC_GetScrollbarXY(wnd, sbar, &left, &top, &leng);
