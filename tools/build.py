@@ -16,7 +16,6 @@ from pathlib import Path
 TOOLS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_DIR.parent
 SOURCE_DIR = REPO_ROOT / "SOURCE"
-LIB_DIR = REPO_ROOT / "LIB"
 
 DOSBOX_BIN: Path = None
 BC31_DIR: Path = None
@@ -131,7 +130,7 @@ def build_c(c_file: str, opt_flags: str = "-O1") -> bool:
     path = Path(c_file)
     name = path.stem.upper()
     print(f"Compiling {path.name} ({opt_flags}) ...")
-    cmd = rf"t:\bin\bcc.exe -c -ml {opt_flags} -It:\include -Ic:\include -I. {path.name}"
+    cmd = rf"t:\bin\bcc.exe -c -ml {opt_flags} -It:\include -Ic:\include -I. -I.. {path.name}"
     obj_file = SOURCE_DIR / f"{name}.OBJ"
     return BUILD_OBJECT(cmd, obj_file)
 
@@ -173,12 +172,10 @@ def build_lib() -> bool:
     with open(rsp_file, "w", encoding="ascii") as f:
         f.write("\r\n".join(rsp_lines) + "\r\n")
 
-    lib_file = LIB_DIR / "SDK.LIB"
     root_lib = REPO_ROOT / "SDK.LIB"
-    CANDIDATE = LIB_DIR / ("L" + secrets.token_hex(3).upper() + ".LIB")
-    ROOT_CANDIDATE = REPO_ROOT / CANDIDATE.name
+    CANDIDATE = REPO_ROOT / ("L" + secrets.token_hex(3).upper() + ".LIB")
     try:
-        cmd = rf"t:\bin\tlib.exe /C ..\LIB\{CANDIDATE.name} @SDK.RSP"
+        cmd = rf"t:\bin\tlib.exe /C ..\{CANDIDATE.name} @SDK.RSP"
         ret, log = run_dos([cmd])
         if log.strip():
             print(log.strip())
@@ -190,29 +187,20 @@ def build_lib() -> bool:
         if HEADER[0] != 0xF0 or not 7 <= int.from_bytes(HEADER[1:], "little") < CANDIDATE.stat().st_size:
             print("Library packaging failed: invalid OMF library header; existing SDK.LIB files retained.")
             return False
-        shutil.copy2(CANDIDATE, ROOT_CANDIDATE)
         with tempfile.TemporaryDirectory(prefix="SDK-LIB-") as BACKUP_DIR:
-            PREVIOUS = []
-            for INDEX, TARGET in enumerate([lib_file, root_lib]):
-                BACKUP = Path(BACKUP_DIR) / str(INDEX)
-                if TARGET.exists():
-                    shutil.copy2(TARGET, BACKUP)
-                PREVIOUS.append((TARGET, BACKUP))
+            BACKUP = Path(BACKUP_DIR) / "SDK.LIB"
+            if root_lib.exists():
+                shutil.copy2(root_lib, BACKUP)
             try:
-                CANDIDATE.replace(lib_file)
-                ROOT_CANDIDATE.replace(root_lib)
+                CANDIDATE.replace(root_lib)
             except OSError:
-                for TARGET, BACKUP in PREVIOUS:
-                    if BACKUP.exists():
-                        shutil.copy2(BACKUP, TARGET)
-                    else:
-                        TARGET.unlink(missing_ok=True)
+                if BACKUP.exists():
+                    shutil.copy2(BACKUP, root_lib)
                 raise
-        print(f"Generated {lib_file.name} ({lib_file.stat().st_size} bytes)")
+        print(f"Generated {root_lib.name} ({root_lib.stat().st_size} bytes)")
         return True
     finally:
         CANDIDATE.unlink(missing_ok=True)
-        ROOT_CANDIDATE.unlink(missing_ok=True)
 
 
 MODULES = [

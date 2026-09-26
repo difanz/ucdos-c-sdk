@@ -1,7 +1,7 @@
 CC      = t:\bin\bcc.exe
 ASM     = t:\bin\tasm.exe
 LIB     = t:\bin\tlib.exe
-INCDIR  = -It:\include -Ic:\include -I.
+INCDIR  = -It:\include -Ic:\include -I. -I..
 CFLAGS  = -c -ml -1 -k- -O -Z $(INCDIR)
 AFLAGS  = /ml /m2
 
@@ -32,8 +32,7 @@ all: SDK.LIB
 SDK.LIB: $(OBJS) SDK.RSP
     if exist SDK.LIB del SDK.LIB
     $(LIB) /C SDK.LIB @SDK.RSP
-    if exist ..\LIB\SDK.LIB del ..\LIB\SDK.LIB
-    copy SDK.LIB ..\LIB\SDK.LIB
+    if exist ..\SDK.LIB del ..\SDK.LIB
     copy SDK.LIB ..\SDK.LIB
 
 AGI_BMP.OBJ: AGI_BMP.C STRETCH.C

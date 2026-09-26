@@ -11,6 +11,5 @@ B[0-9]*.LOG
 __pycache__/
 *.LIB
 *.lib
-!/LIB/SDK.LIB
 !/SDK.LIB
-
+!/SDKNOR.LIB

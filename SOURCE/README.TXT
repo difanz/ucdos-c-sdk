@@ -21,4 +21,4 @@ SDK.LIB 核心库源码说明
 二、编译说明
     在 DOS 下运行 BUILD.BAT 或执行 make -f MAKEFILE。
     使用 Borland C++ 3.1 和 Turbo Assembler 3.1 编译。
-    编译产物输出至 ..\LIB\SDK.LIB 与 ..\SDK.LIB。
+    编译产物输出至 ..\SDK.LIB。
